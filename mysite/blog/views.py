@@ -3,6 +3,7 @@ from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from .models import Post
 from .forms import EmailPostForm
 from django.views.generic import ListView
+from django.core.mail import send_mail
 
 # Create your views here.
 
@@ -23,14 +24,19 @@ def post_detail(request, year, month, day, post):
 
 def post_share(request,post_id):
     #Retrieve post by id
+    sent = False
     post = get_object_or_404(Post,id=post_id, status='published')
     if request.method == "POST":
         form = EmailPostForm(request.POST)
         if form.is_valid():
             #Form fields are all valid
             cd = form.cleaned_data
-            #... send email here
+            post_url = request.build_absolute_uri(post.get_absolute_url())
+            subject = '{} ({}) recommends you reading "{}"'.format(cd['name'],cd['email'],post.title)
+            message = 'Read "{}" at {}\n\n{}\'s comments: {}'.format(post.title,post_url,cd['name'],cd['comments'])
+            send_mail(subject,message, 'admin@myblog.com',[cd['to']])
+            sent = True
     else:
         form = EmailPostForm()
 
-    return render(request,'blog/post/share.html',{'post':post,'form':form})
+    return render(request,'blog/post/share.html',{'post':post,'form':form, 'sent':sent})
